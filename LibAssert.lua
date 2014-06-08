@@ -949,6 +949,9 @@ local function GetLocale()
 end
 
 function Lib:OnSave()
+  -- Apparently Wildstar likes crashing silently if assert is replaced during reloadui.
+    -- Most likely the reference is torn down then checked (nil function reference)
+    -- To prevent the crash we return assert to the original during OnSave
 	_G.assert = oldAssert
 end
 

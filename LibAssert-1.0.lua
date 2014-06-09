@@ -1052,18 +1052,18 @@ function Lib:OnLoad()
 		s:set("assertion.falsy.positive", "Assertion supposee etre fausse mais de valeur:\n%s")
 		s:set("assertion.falsy.negative", "Assertion supposee etre vraie mais de valeur:\n%s")
 
-		s:set("assertion.called.positive", "Je m'attendais à être appelé %s fois, mais j'ai été appelé %s fois")
-		s:set("assertion.called.negative", "Je ne m'attendais pas a être appelé exactement %s fois, mais c'était ainsi.")
+		s:set("assertion.called.positive", "%s appel(s) attendu(s) mais %s appel(s) reçu(s) à la place.")
+		s:set("assertion.called.negative", "N'aurais pas du être appelé exactement %s fois, mais c'était le cas.")
 
-		s:set("assertion.called_with.positive", "Les fonctions n'étaient pas appelé avec les arguments")
-		s:set("assertion.called_with.negative", "Les fonctions ont été appelé avec les arguments")
+		s:set("assertion.called_with.positive", "Fonction n'a pas été appelé avec les arguments.")
+		s:set("assertion.called_with.negative", "Fonction appelé avec les arguments.")
 
-		s:set("assertion.returned_arguments.positive", "Je m'attendais à être appelé %s argument(s), mais j'ai été appelé avec %s")
-		s:set("assertion.returned_arguments.negative", "Je ne m'attendais pas à être appelé avec %s argument(s), mais j'ai été appelé avec %s")
+		s:set("assertion.returned_arguments.positive", "%s argument(s) attendu(s) mais %s argument(s) reçu(s).")
+		s:set("assertion.returned_arguments.negative", "N'aurais pas du être appelé avec exactment %s argument(s), mais c'était le cas.")
 
 		-- errors
-		s:set("assertion.internal.argtolittle", "Le fonction '%s' nécessite un minimum de %s arguments, obtenu: %s")
-		s:set("assertion.internal.badargtype", "Le fonction '%s' nécessite un %s comme argument, obtenu: %s")
+		s:set("assertion.internal.argtolittle", "Le fonction '%s' nécessite un minimum de %s arguments, reçu: %s")
+		s:set("assertion.internal.badargtype", "Le fonction '%s' nécessite un %s comme argument, reçu: %s")
 	end
 end
 

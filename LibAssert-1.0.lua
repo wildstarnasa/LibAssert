@@ -1,4 +1,4 @@
-local MAJOR,MINOR = "Lib:Assert-1.0", 2
+local MAJOR,MINOR = "Lib:Assert-1.0", 3
 -- Get a reference to the package information if any
 local APkg = Apollo.GetPackage(MAJOR)
 -- If there was an older version loaded we need to see if this is newer
@@ -10,77 +10,90 @@ local Lib = APkg and APkg.tPackage or {}
 
 local oldAssert
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs Say
-------------------------------------------------
-local s
-do
-	local registry = { }
-	local current_namespace
-	local fallback_namespace
+-------------------------------------------------------------------------------
 
-	s = {
+local SAY_MAJOR, SAY_MINOR = "Olivine:Say-1.0", 1
+-- Get a reference to the package information if any
+local APkg = Apollo.GetPackage(SAY_MAJOR)
+-- Set a reference to the actual package or create an empty table
+local s = APkg and APkg.tPackage or {}
+-- If there was an older version loaded we need to see if this is newer
+if not APkg or (APkg.nVersion or 0) < SAY_MINOR then
+	do
+		local registry = s.get_registry and s.get_registry() or { }
+		local current_namespace
+		local fallback_namespace
 
-	  _COPYRIGHT   = "Copyright (c) 2012 Olivine Labs, LLC.",
-	  _DESCRIPTION = "A simple string key/value store for i18n or any other case where you want namespaced strings.",
-	  _VERSION     = "Say 1.2",
+		s = {
 
-	  set_namespace = function(self, namespace)
-	    current_namespace = namespace
-	    if not registry[current_namespace] then
-	      registry[current_namespace] = {}
-	    end
-	  end,
+			_COPYRIGHT   = "Copyright (c) 2012 Olivine Labs, LLC.",
+			_DESCRIPTION = "A simple string key/value store for i18n or any other case where you want namespaced strings.",
+			_VERSION     = "Say 1.2",
 
-	  set_fallback = function(self, namespace)
-	    fallback_namespace = namespace
-	    if not registry[fallback_namespace] then
-	      registry[fallback_namespace] = {}
-	    end
-	  end,
+			set_namespace = function(self, namespace)
+				current_namespace = namespace
+				if not registry[current_namespace] then
+					registry[current_namespace] = {}
+				end
+			end,
 
-	  set = function(self, key, value)
-	    registry[current_namespace][key] = value
-	  end
-	}
+			set_fallback = function(self, namespace)
+				fallback_namespace = namespace
+				if not registry[fallback_namespace] then
+					registry[fallback_namespace] = {}
+				end
+			end,
 
-	local __meta = {
-	  __call = function(self, key, vars)
-	    vars = vars or {}
+			set = function(self, key, value)
+				registry[current_namespace][key] = value
+			end,
 
-	    local str = registry[current_namespace][key] or registry[fallback_namespace][key]
+			get_registry = function()
+				return registry
+			end,
+		}
 
-	    if str == nil then
-	      return nil
-	    end
-	    str = tostring(str)
-	    local strings = {}
+		local __meta = {
+			__call = function(self, key, vars)
+				vars = vars or {}
 
-	    for i,v in ipairs(vars) do
-	      table.insert(strings, tostring(v))
-	    end
+				local str = registry[current_namespace][key] or registry[fallback_namespace][key]
 
-	    return #strings > 0 and str:format(unpack(strings)) or str
-	  end,
+				if str == nil then
+					return nil
+				end
+				str = tostring(str)
+				local strings = {}
 
-	  __index = function(self, key)
-	    return registry[key]
-	  end
-	}
+				for i,v in ipairs(vars) do
+					table.insert(strings, tostring(v))
+				end
 
-	s:set_fallback('en')
-	s:set_namespace('en')
+				return #strings > 0 and str:format(unpack(strings)) or str
+			end,
 
-	if _TEST then
-	  s._registry = registry -- force different name to make sure with _TEST behaves exactly as without _TEST
+			__index = function(self, key)
+				return registry[key]
+			end
+		}
+
+		s:set_fallback('en')
+		s:set_namespace('en')
+
+		if _TEST then
+			s._registry = registry -- force different name to make sure with _TEST behaves exactly as without _TEST
+		end
+
+		setmetatable(s, __meta)
 	end
-
-	setmetatable(s, __meta)
+	Apollo.RegisterPackage(s, SAY_MAJOR, SAY_MINOR, {})
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs util
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 local util = {}
 do
@@ -183,9 +196,9 @@ do
 	end
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs Luaassert.state
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 -- exported module table
 local astate
@@ -194,9 +207,9 @@ do
 	-- records; formatters, parameters, spies and stubs
 
 	local state_mt = {
-	      __call = function(self)
-	        self:revert()
-	      end }
+				__call = function(self)
+					self:revert()
+				end }
 
 	local nilvalue = {} -- unique ID to refer to nil values for parameters
 
@@ -210,106 +223,106 @@ do
 	-- Reverts to a (specific) snapshot.
 	-- @param self (optional) the snapshot to revert to. If not provided, it will revert to the last snapshot.
 	state.revert = function(self)
-	  if not self then
-	    -- no snapshot given, so move 1 up
-	    self = current
-	    if not self.previous then
-	      -- top of list, no previous one, nothing to do
-	      return
-	    end
-	  end
-	  if getmetatable(self) ~= state_mt then error("Value provided is not a valid snapshot", 2) end
-	  
-	  if self.next then
-	    self.next:revert()
-	  end
-	  -- revert formatters in 'last'
-	  self.formatters = {}
-	  -- revert parameters in 'last'
-	  self.parameters = {}
-	  -- revert spies/stubs in 'last'
-	  while self.spies[1] do
-	    self.spies[1]:revert()
-	    table.remove(self.spies, 1)
-	  end
-	  setmetatable(self, nil) -- invalidate as a snapshot
-	  current = self.previous
-	  current.next = nil
+		if not self then
+			-- no snapshot given, so move 1 up
+			self = current
+			if not self.previous then
+				-- top of list, no previous one, nothing to do
+				return
+			end
+		end
+		if getmetatable(self) ~= state_mt then error("Value provided is not a valid snapshot", 2) end
+		
+		if self.next then
+			self.next:revert()
+		end
+		-- revert formatters in 'last'
+		self.formatters = {}
+		-- revert parameters in 'last'
+		self.parameters = {}
+		-- revert spies/stubs in 'last'
+		while self.spies[1] do
+			self.spies[1]:revert()
+			table.remove(self.spies, 1)
+		end
+		setmetatable(self, nil) -- invalidate as a snapshot
+		current = self.previous
+		current.next = nil
 	end
 
 	------------------------------------------------------
 	-- Creates a new snapshot.
 	-- @return snapshot table
 	state.snapshot = function()
-	  local s = current
-	  local new = setmetatable ({
-	    formatters = {},
-	    parameters = {},
-	    spies = {},
-	    previous = current,
-	    revert = state.revert,
-	  }, state_mt)
-	  if current then current.next = new end
-	  current = new
-	  return current
+		local s = current
+		local new = setmetatable ({
+			formatters = {},
+			parameters = {},
+			spies = {},
+			previous = current,
+			revert = state.revert,
+		}, state_mt)
+		if current then current.next = new end
+		current = new
+		return current
 	end
 
 
 	--  FORMATTERS
 	state.add_formatter = function(callback)
-	  table.insert(current.formatters, 1, callback)
+		table.insert(current.formatters, 1, callback)
 	end
 
 	state.remove_formatter = function(callback, s)
-	  s = s or current
-	  for i, v in ipairs(s.formatters) do
-	    if v == fmtr then
-	      table.remove(s.formatters, i)
-	      break
-	    end
-	  end
-	  -- wasn't found, so traverse up 1 state
-	  if s.previous then
-	    state.remove_formatter(callback, s.previous)
-	  end
+		s = s or current
+		for i, v in ipairs(s.formatters) do
+			if v == fmtr then
+				table.remove(s.formatters, i)
+				break
+			end
+		end
+		-- wasn't found, so traverse up 1 state
+		if s.previous then
+			state.remove_formatter(callback, s.previous)
+		end
 	end
 
 	state.format_argument = function(val, s)
-	  s = s or current
-	  for _, fmt in ipairs(s.formatters) do
-	    local valfmt = fmt(val)
-	    if valfmt ~= nil then return valfmt end
-	  end
-	  -- nothing found, check snapshot 1 up in list
-	  if s.previous then
-	    return state.format_argument(val, s.previous)
-	  end
-	  return nil -- end of list, couldn't format
+		s = s or current
+		for _, fmt in ipairs(s.formatters) do
+			local valfmt = fmt(val)
+			if valfmt ~= nil then return valfmt end
+		end
+		-- nothing found, check snapshot 1 up in list
+		if s.previous then
+			return state.format_argument(val, s.previous)
+		end
+		return nil -- end of list, couldn't format
 	end
 
 
 	--  PARAMETERS
 	state.set_parameter = function(name, value)
-	  if value == nil then value = nilvalue end
-	  current.parameters[name] = value
+		if value == nil then value = nilvalue end
+		current.parameters[name] = value
 	end
 
 	state.get_parameter = function(name, s)
-	  s = s or current
-	  local val = s.parameters[name]
-	  if val == nil and s.previous then
-	    -- not found, so check 1 up in list
-	    return state.get_parameter(name, s.previous)
-	  end
-	  if val ~= nilvalue then
-	    return val
-	  end
-	  return nil
+		s = s or current
+		local val = s.parameters[name]
+		if val == nil and s.previous then
+			-- not found, so check 1 up in list
+			return state.get_parameter(name, s.previous)
+		end
+		if val ~= nilvalue then
+			return val
+		end
+		return nil
 	end
 
 	--  SPIES / STUBS
 	state.add_spy = function(spy)
-	  table.insert(current.spies, 1, spy)
+		table.insert(current.spies, 1, spy)
 	end
 
 	state.snapshot()  -- create initial state
@@ -317,9 +330,9 @@ do
 	astate = state
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs Luaassert.assert
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 do
 	local obj   -- the returned module table
@@ -328,167 +341,167 @@ do
 	local namespace = {}
 
 	local errorlevel = function()
-	  -- find the first level, not defined in the same file as this
-	  -- code file to properly report the error
-	  local level = 1
-	  local info = debug.getinfo(level)
-	  local thisfile = (info or {}).source
-	  while thisfile and thisfile == (info or {}).source do
-	    level = level + 1
-	    info = debug.getinfo(level)
-	  end
-	  if level > 1 then level = level - 1 end -- deduct call to errorlevel() itself
-	  return level
+		-- find the first level, not defined in the same file as this
+		-- code file to properly report the error
+		local level = 1
+		local info = debug.getinfo(level)
+		local thisfile = (info or {}).source
+		while thisfile and thisfile == (info or {}).source do
+			level = level + 1
+			info = debug.getinfo(level)
+		end
+		if level > 1 then level = level - 1 end -- deduct call to errorlevel() itself
+		return level
 	end
 
 	local function extract_keys(assert_string)
-	  -- get a list of token separated by _
-	  local tokens = {}
-	  for token in assert_string:lower():gmatch('[^_]+') do
-	    table.insert(tokens, token)
-	  end
+		-- get a list of token separated by _
+		local tokens = {}
+		for token in assert_string:lower():gmatch('[^_]+') do
+			table.insert(tokens, token)
+		end
 
-	  -- find valid keys by coalescing tokens as needed, starting from the end
-	  local keys = {}
-	  local key = nil
-	  for i = #tokens, 1, -1 do
-	    local token = tokens[i]
-	    key = key and (token .. '_' .. key) or token
-	    if namespace.modifier[key] or namespace.assertion[key] then
-	      table.insert(keys, 1, key)
-	      key = nil
-	    end
-	  end
+		-- find valid keys by coalescing tokens as needed, starting from the end
+		local keys = {}
+		local key = nil
+		for i = #tokens, 1, -1 do
+			local token = tokens[i]
+			key = key and (token .. '_' .. key) or token
+			if namespace.modifier[key] or namespace.assertion[key] then
+				table.insert(keys, 1, key)
+				key = nil
+			end
+		end
 
-	  -- if there's anything left we didn't recognize it
-	  if key then
-	    error("luassert: unknown modifier/assertion: '" .. key .."'", errorlevel())
-	  end
+		-- if there's anything left we didn't recognize it
+		if key then
+			error("luassert: unknown modifier/assertion: '" .. key .."'", errorlevel())
+		end
 
-	  return keys
+		return keys
 	end
 
 	local __assertion_meta = {
-	  __call = function(self, ...)
-	    local state = self.state
-	    local arguments = {...}
-	    arguments.n = select('#',...)  -- add argument count for trailing nils
-	    local val = self.callback(state, arguments)
-	    local data_type = type(val)
+		__call = function(self, ...)
+			local state = self.state
+			local arguments = {...}
+			arguments.n = select('#',...)  -- add argument count for trailing nils
+			local val = self.callback(state, arguments)
+			local data_type = type(val)
 
-	    if data_type == "boolean" then
-	      if val ~= state.mod then
-	        if state.mod then
-	          error(s(self.positive_message, obj:format(arguments)) or "assertion failed!", errorlevel())
-	        else
-	          error(s(self.negative_message, obj:format(arguments)) or "assertion failed!", errorlevel())
-	        end
-	      else
-	        return state
-	      end
-	    end
-	    return val
-	  end
+			if data_type == "boolean" then
+				if val ~= state.mod then
+					if state.mod then
+						error(s(self.positive_message, obj:format(arguments)) or "assertion failed!", errorlevel())
+					else
+						error(s(self.negative_message, obj:format(arguments)) or "assertion failed!", errorlevel())
+					end
+				else
+					return state
+				end
+			end
+			return val
+		end
 	}
 
 	local __state_meta = {
 
-	  __call = function(self, payload, callback)
-	    self.payload = payload or rawget(self, "payload")
-	    if callback then callback(self) end
-	    return self
-	  end,
+		__call = function(self, payload, callback)
+			self.payload = payload or rawget(self, "payload")
+			if callback then callback(self) end
+			return self
+		end,
 
-	  __index = function(self, key)
-	    local keys = extract_keys(key)
+		__index = function(self, key)
+			local keys = extract_keys(key)
 
-	    -- execute modifiers and assertions
-	    local ret = nil
-	    for _, key in ipairs(keys) do
-	      if namespace.modifier[key] then
-	        namespace.modifier[key].state = self
-	        ret = self(nil, namespace.modifier[key])
-	      elseif namespace.assertion[key] then
-	        namespace.assertion[key].state = self
-	        ret = namespace.assertion[key]
-	      end
-	    end
-	    return ret
-	  end
+			-- execute modifiers and assertions
+			local ret = nil
+			for _, key in ipairs(keys) do
+				if namespace.modifier[key] then
+					namespace.modifier[key].state = self
+					ret = self(nil, namespace.modifier[key])
+				elseif namespace.assertion[key] then
+					namespace.assertion[key].state = self
+					ret = namespace.assertion[key]
+				end
+			end
+			return ret
+		end
 	}
 
 	obj = {
-	  state = function() return setmetatable({mod=true, payload=nil}, __state_meta) end,
+		state = function() return setmetatable({mod=true, payload=nil}, __state_meta) end,
 
-	  -- registers a function in namespace
-	  register = function(self, nspace, name, callback, positive_message, negative_message)
-	    -- register
-	    local lowername = name:lower()
-	    if not namespace[nspace] then
-	      namespace[nspace] = {}
-	    end
-	    namespace[nspace][lowername] = setmetatable({
-	      callback = callback,
-	      name = lowername,
-	      positive_message=positive_message,
-	      negative_message=negative_message
-	    }, __assertion_meta)
-	  end,
+		-- registers a function in namespace
+		register = function(self, nspace, name, callback, positive_message, negative_message)
+			-- register
+			local lowername = name:lower()
+			if not namespace[nspace] then
+				namespace[nspace] = {}
+			end
+			namespace[nspace][lowername] = setmetatable({
+				callback = callback,
+				name = lowername,
+				positive_message=positive_message,
+				negative_message=negative_message
+			}, __assertion_meta)
+		end,
 
-	  -- registers a formatter
-	  -- a formatter takes a single argument, and converts it to a string, or returns nil if it cannot format the argument
-	  add_formatter = function(self, callback)
-	    astate.add_formatter(callback)
-	  end,
+		-- registers a formatter
+		-- a formatter takes a single argument, and converts it to a string, or returns nil if it cannot format the argument
+		add_formatter = function(self, callback)
+			astate.add_formatter(callback)
+		end,
 
-	  -- unregisters a formatter
-	  remove_formatter = function(self, fmtr)
-	    astate.remove_formatter(fmtr)
-	  end,
+		-- unregisters a formatter
+		remove_formatter = function(self, fmtr)
+			astate.remove_formatter(fmtr)
+		end,
 
-	  format = function(self, args)
-	    -- args.n specifies the number of arguments in case of 'trailing nil' arguments which get lost
-	    local nofmt = args.nofmt or {}  -- arguments in this list should not be formatted
-	    for i = 1, (args.n or #args) do -- cannot use pairs because table might have nils
-	      if not nofmt[i] then
-	        local val = args[i]
-	        local valfmt = astate.format_argument(val)
-	        if valfmt == nil then valfmt = tostring(val) end -- no formatter found
-	        args[i] = valfmt
-	      end
-	    end
-	    return args
-	  end,
+		format = function(self, args)
+			-- args.n specifies the number of arguments in case of 'trailing nil' arguments which get lost
+			local nofmt = args.nofmt or {}  -- arguments in this list should not be formatted
+			for i = 1, (args.n or #args) do -- cannot use pairs because table might have nils
+				if not nofmt[i] then
+					local val = args[i]
+					local valfmt = astate.format_argument(val)
+					if valfmt == nil then valfmt = tostring(val) end -- no formatter found
+					args[i] = valfmt
+				end
+			end
+			return args
+		end,
 
-	  set_parameter = function(self, name, value)
-	    astate.set_parameter(name, value)
-	  end,
-	  
-	  get_parameter = function(self, name)
-	    return astate.get_parameter(name)
-	  end,  
-	  
-	  add_spy = function(self, spy)
-	    astate.add_spy(spy)
-	  end,
-	  
-	  snapshot = function(self)
-	    return astate.snapshot()
-	  end,
+		set_parameter = function(self, name, value)
+			astate.set_parameter(name, value)
+		end,
+		
+		get_parameter = function(self, name)
+			return astate.get_parameter(name)
+		end,  
+		
+		add_spy = function(self, spy)
+			astate.add_spy(spy)
+		end,
+		
+		snapshot = function(self)
+			return astate.snapshot()
+		end,
 	}
 
 	local __meta = {
 
-	  __call = function(self, bool, message, ...)
-	    if not bool then
-	      error(message or "assertion failed!", 2)
-	    end
-	    return bool , message , ...
-	  end,
+		__call = function(self, bool, message, ...)
+			if not bool then
+				error(message or "assertion failed!", 2)
+			end
+			return bool , message , ...
+		end,
 
-	  __index = function(self, key)
-	    return rawget(self, key) or self.state()[key]
-	  end,
+		__index = function(self, key)
+			return rawget(self, key) or self.state()[key]
+		end,
 
 	}
 
@@ -652,9 +665,9 @@ do
 	assert:register("assertion", "falsy", falsy, "assertion.falsy.positive", "assertion.falsy.negative")
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs modifiers
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 do
 	local function is(state)
@@ -674,9 +687,9 @@ do
 	assert:register("modifier", "no", is_not)
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Olivine-Labs formatters
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 do
 	local function fmt_string(arg)
@@ -763,9 +776,9 @@ do
 	assert:set_parameter("TableFormatLevel", 3)
 end
 
-------------------------------------------------
+-------------------------------------------------------------------------------
 --- Wildstar related
-------------------------------------------------
+-------------------------------------------------------------------------------
 
 -- this locale lookup table is accurate for build 6512
 local ktLocales = {

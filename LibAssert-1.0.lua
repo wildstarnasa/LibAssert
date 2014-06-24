@@ -1,4 +1,4 @@
-local MAJOR,MINOR = "Lib:Assert-1.0", 3
+local MAJOR,MINOR = "Lib:Assert-1.0", 4
 -- Get a reference to the package information if any
 local APkg = Apollo.GetPackage(MAJOR)
 -- If there was an older version loaded we need to see if this is newer
@@ -14,7 +14,7 @@ local oldAssert
 --- Olivine-Labs Say
 -------------------------------------------------------------------------------
 
-local SAY_MAJOR, SAY_MINOR = "Olivine:Say-1.0", 1
+local SAY_MAJOR, SAY_MINOR = "Olivine:Say-1.0", 2
 -- Get a reference to the package information if any
 local APkg = Apollo.GetPackage(SAY_MAJOR)
 -- Set a reference to the actual package or create an empty table
@@ -87,7 +87,8 @@ if not APkg or (APkg.nVersion or 0) < SAY_MINOR then
 		end
 
 		setmetatable(s, __meta)
-	end
+    end
+    function s:OnLoad() end
 	Apollo.RegisterPackage(s, SAY_MAJOR, SAY_MINOR, {})
 end
 
@@ -363,7 +364,7 @@ do
 
 		-- find valid keys by coalescing tokens as needed, starting from the end
 		local keys = {}
-		local key = nil
+		local key
 		for i = #tokens, 1, -1 do
 			local token = tokens[i]
 			key = key and (token .. '_' .. key) or token
@@ -416,7 +417,7 @@ do
 			local keys = extract_keys(key)
 
 			-- execute modifiers and assertions
-			local ret = nil
+			local ret
 			for _, key in ipairs(keys) do
 				if namespace.modifier[key] then
 					namespace.modifier[key].state = self
@@ -556,7 +557,7 @@ do
 	local function same(state, arguments)
 		local argcnt = arguments.n
 		assert(argcnt > 1, s("assertion.internal.argtolittle", { "same", 2, tostring(argcnt) }))
-		local prev = nil
+		local prev
 		for i = 2,argcnt  do
 			if type(arguments[1]) == 'table' and type(arguments[i]) == 'table' then
 				if not util.deepcompare(arguments[1], arguments[i], true) then
@@ -590,7 +591,7 @@ do
 		local err_expected = arguments[2]
 		
 		assert(util.callable(func), s("assertion.internal.badargtype", { "error", "function, or callable object", type(func) }))
-		local err_actual = nil
+		local err_actual
 		--must swap error functions to get the actual error message
 		local old_error = error
 		error = function(err)

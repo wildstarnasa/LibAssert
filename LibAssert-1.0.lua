@@ -1,4 +1,4 @@
-local MAJOR,MINOR = "Lib:Assert-1.0", 4
+local MAJOR,MINOR = "Lib:Assert-1.0", 5
 -- Get a reference to the package information if any
 local APkg = Apollo.GetPackage(MAJOR)
 -- If there was an older version loaded we need to see if this is newer
@@ -9,6 +9,17 @@ end
 local Lib = APkg and APkg.tPackage or {}
 
 local oldAssert
+
+-------------------------------------------------------------------------------
+--- Upvalues
+-------------------------------------------------------------------------------
+local _G = _G
+local Apollo = Apollo
+local tostring, unpack, type, ipairs, pairs = tostring, unpack, type, ipairs, pairs
+local select, error, getmetatable, setmetatable = select, error, getmetatable, setmetatable
+local tinsert, tremove, rawget, next = table.insert, table.remove, rawget, next
+local pcall, strformat, strrep = pcall, string.format, string.rep
+local debuginfo, debuggetmeta = debug.getinfo, debug.getmetatable
 
 -------------------------------------------------------------------------------
 --- Olivine-Labs Say
@@ -68,7 +79,7 @@ if not APkg or (APkg.nVersion or 0) < SAY_MINOR then
 				local strings = {}
 
 				for i,v in ipairs(vars) do
-					table.insert(strings, tostring(v))
+					tinsert(strings, tostring(v))
 				end
 
 				return #strings > 0 and str:format(unpack(strings)) or str
@@ -104,8 +115,8 @@ do
 		if ty1 ~= ty2 then return false end
 		-- non-table types can be directly compared
 		if ty1 ~= 'table' then return t1 == t2 end
-		local mt1 = debug.getmetatable(t1)
-		local mt2 = debug.getmetatable(t2)
+		local mt1 = debuggetmeta(t1)
+		local mt2 = debuggetmeta(t2)
 		-- would equality be determined by metatable __eq?
 		if mt1 and mt1 == mt2 and mt1.__eq then
 			-- then use that unless asked not to
@@ -193,7 +204,7 @@ do
 	-- @param object element to inspect on being callable or not
 	-- @return boolean, true if the object is callable
 	function util.callable(object)
-		return type(object) == "function" or type((debug.getmetatable(object) or {}).__call) == "function"
+		return type(object) == "function" or type((debuggetmeta(object) or {}).__call) == "function"
 	end
 end
 
@@ -233,7 +244,7 @@ do
 			end
 		end
 		if getmetatable(self) ~= state_mt then error("Value provided is not a valid snapshot", 2) end
-		
+
 		if self.next then
 			self.next:revert()
 		end
@@ -244,7 +255,7 @@ do
 		-- revert spies/stubs in 'last'
 		while self.spies[1] do
 			self.spies[1]:revert()
-			table.remove(self.spies, 1)
+			tremove(self.spies, 1)
 		end
 		setmetatable(self, nil) -- invalidate as a snapshot
 		current = self.previous
@@ -271,14 +282,14 @@ do
 
 	--  FORMATTERS
 	state.add_formatter = function(callback)
-		table.insert(current.formatters, 1, callback)
+		tinsert(current.formatters, 1, callback)
 	end
 
 	state.remove_formatter = function(callback, s)
 		s = s or current
 		for i, v in ipairs(s.formatters) do
-			if v == fmtr then
-				table.remove(s.formatters, i)
+			if v == callback then
+				tremove(s.formatters, i)
 				break
 			end
 		end
@@ -323,7 +334,7 @@ do
 
 	--  SPIES / STUBS
 	state.add_spy = function(spy)
-		table.insert(current.spies, 1, spy)
+		tinsert(current.spies, 1, spy)
 	end
 
 	state.snapshot()  -- create initial state
@@ -345,11 +356,11 @@ do
 		-- find the first level, not defined in the same file as this
 		-- code file to properly report the error
 		local level = 1
-		local info = debug.getinfo(level)
+		local info = debuginfo(level)
 		local thisfile = (info or {}).source
 		while thisfile and thisfile == (info or {}).source do
 			level = level + 1
-			info = debug.getinfo(level)
+			info = debuginfo(level)
 		end
 		if level > 1 then level = level - 1 end -- deduct call to errorlevel() itself
 		return level
@@ -359,7 +370,7 @@ do
 		-- get a list of token separated by _
 		local tokens = {}
 		for token in assert_string:lower():gmatch('[^_]+') do
-			table.insert(tokens, token)
+			tinsert(tokens, token)
 		end
 
 		-- find valid keys by coalescing tokens as needed, starting from the end
@@ -369,7 +380,7 @@ do
 			local token = tokens[i]
 			key = key and (token .. '_' .. key) or token
 			if namespace.modifier[key] or namespace.assertion[key] then
-				table.insert(keys, 1, key)
+				tinsert(keys, 1, key)
 				key = nil
 			end
 		end
@@ -477,15 +488,15 @@ do
 		set_parameter = function(self, name, value)
 			astate.set_parameter(name, value)
 		end,
-		
+
 		get_parameter = function(self, name)
 			return astate.get_parameter(name)
-		end,  
-		
+		end,
+
 		add_spy = function(self, spy)
 			astate.add_spy(spy)
 		end,
-		
+
 		snapshot = function(self)
 			return astate.snapshot()
 		end,
@@ -589,7 +600,7 @@ do
 	local function has_error(state, arguments)
 		local func = arguments[1]
 		local err_expected = arguments[2]
-		
+
 		assert(util.callable(func), s("assertion.internal.badargtype", { "error", "function, or callable object", type(func) }))
 		local err_actual
 		--must swap error functions to get the actual error message
@@ -695,19 +706,19 @@ end
 do
 	local function fmt_string(arg)
 		if type(arg) == "string" then
-			return string.format("(string) '%s'", arg)
+			return strformat("(string) '%s'", arg)
 		end
 	end
 
 	local function fmt_number(arg)
 		if type(arg) == "number" then
-			return string.format("(number) %s", tostring(arg))
+			return strformat("(number) %s", tostring(arg))
 		end
 	end
 
 	local function fmt_boolean(arg)
 		if type(arg) == "boolean" then
-			return string.format("(boolean) %s", tostring(arg))
+			return strformat("(boolean) %s", tostring(arg))
 		end
 	end
 
@@ -725,13 +736,13 @@ do
 			for k, v in pairs(t) do
 				if type(v) == "table" then
 					if l < tmax or tmax < 0 then
-						result = result .. string.format(string.rep(" ",l * 2) .. "[%s] = {\n%s }\n", tostring(k), tostring(ft(v, l + 1):sub(1,-2)))
+						result = result .. strformat(strrep(" ",l * 2) .. "[%s] = {\n%s }\n", tostring(k), tostring(ft(v, l + 1):sub(1,-2)))
 					else
-						result = result .. string.format(string.rep(" ",l * 2) .. "[%s] = { ... more }\n", tostring(k))
+						result = result .. strformat(strrep(" ",l * 2) .. "[%s] = { ... more }\n", tostring(k))
 					end
 				else
 					if type(v) == "string" then v = "'"..v.."'" end
-					result = result .. string.format(string.rep(" ",l * 2) .. "[%s] = %s\n", tostring(k), tostring(v))
+					result = result .. strformat(strrep(" ",l * 2) .. "[%s] = %s\n", tostring(k), tostring(v))
 				end
 			end
 			return result
@@ -755,14 +766,14 @@ do
 
 	local function fmt_function(arg)
 		if type(arg) == "function" then
-			local debug_info = debug.getinfo(arg)
-			return string.format("%s @ line %s in %s", tostring(arg), tostring(debug_info.linedefined), tostring(debug_info.source))
+			local debug_info = debuginfo(arg)
+			return strformat("%s @ line %s in %s", tostring(arg), tostring(debug_info.linedefined), tostring(debug_info.source))
 		end
 	end
 
 	local function fmt_userdata(arg)
 		if type(arg) == "userdata" then
-			return string.format("(userdata) '%s'", tostring(arg))
+			return strformat("(userdata) '%s'", tostring(arg))
 		end
 	end
 
@@ -790,17 +801,17 @@ local ktLocales = {
 }
 local function GetLocale()
 	local strCancel = Apollo.GetString(1)
-	
+
 	-- German
-	if strCancel == "Abbrechen" then 
+	if strCancel == "Abbrechen" then
 		return ktLocales[2]
 	end
-	
+
 	-- French
 	if strCancel == "Annuler" then
 		return ktLocales[3]
 	end
-	
+
 	-- Other
 	return ktLocales[1]
 --  return ktLocales[(Apollo.GetConsoleVariable("locale.languageId") or 1)]
@@ -856,7 +867,7 @@ function Lib:OnLoad()
 		-- errors
 		s:set("assertion.internal.argtolittle", "the '%s' function requires a minimum of %s arguments, got: %s")
 		s:set("assertion.internal.badargtype", "the '%s' function requires a %s as an argument, got: %s")
-	elseif strLocal == "deDE" then
+	elseif strLocale == "deDE" then
 		s:set_namespace('de')
 
 		s:set("assertion.same.positive", "Erwarte gleiche Objekte. Gegeben:\n%s\nErwartet:\n%s")
@@ -889,7 +900,7 @@ function Lib:OnLoad()
 		-- errors
 		s:set("assertion.internal.argtolittle", "Die Funktion '%s' erwartet mindestens %s Parameter, gegeben: %s")
 		s:set("assertion.internal.badargtype", "Die Funktion '%s' erwartet einen Parameter vom Typ '%s', gegeben: %s")
-	elseif strLocal == "frFR" then
+	elseif strLocale == "frFR" then
 		s:set_namespace("fr")
 
 		s:set("assertion.same.positive", "Objets supposes de meme nature attendus. Argument passe:\n%s\nAttendu:\n%s")
@@ -900,7 +911,7 @@ function Lib:OnLoad()
 
 		s:set("assertion.unique.positive", "Objet suppose etre unique attendu:\n%s")
 		s:set("assertion.unique.negative", "Objet suppose ne pas etre unique attendu:\n%s")
-		
+
 		s:set("assertion.error.positive", "Erreur supposee etre generee.")
 		s:set("assertion.error.negative", "Erreur non supposee etre generee.\n%s")
 

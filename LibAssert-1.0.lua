@@ -98,8 +98,8 @@ if not APkg or (APkg.nVersion or 0) < SAY_MINOR then
 		end
 
 		setmetatable(s, __meta)
-    end
-    function s:OnLoad() end
+	end
+	function s:OnLoad() end
 	Apollo.RegisterPackage(s, SAY_MAJOR, SAY_MINOR, {})
 end
 
